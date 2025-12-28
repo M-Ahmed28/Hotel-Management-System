@@ -1,4 +1,6 @@
+package hotel.management.system;
 
+import javax.swing.SwingUtilities;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -18,17 +20,27 @@ public class Start extends javax.swing.JFrame {
      */
     public Start() {
         initComponents();
-        Thread t=new Thread(new Runnable() {
-            @Override
-            public void run() {
-                    try {
-                        Thread.sleep(1000);
-                        new Start1().setVisible(true);
-                    } catch (InterruptedException ex) {
-                }      
+        startNavigationTimer();
+    }
+
+    // Refactoring: Extract Method to handle the thread logic
+    private void startNavigationTimer() {
+        Thread timerThread = new Thread(() -> {
+            try {
+                Thread.sleep(1000);
+                // Rationale: GUI updates should always be on the Event Dispatch Thread (EDT)
+                SwingUtilities.invokeLater(this::navigateToNextScreen);
+            } catch (InterruptedException ex) {
+                // Rationale: Re-interrupting ensures the interrupt status is not swallowed
+                Thread.currentThread().interrupt();
             }
         });
-        t.start();
+        timerThread.start();
+    }
+
+    private void navigateToNextScreen() {
+        new Start1().setVisible(true);
+        this.dispose(); // Close splash after moving to next screen
     }
 
     /**

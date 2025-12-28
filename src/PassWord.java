@@ -1,13 +1,10 @@
 
+package hotel.management.system;
+
 import java.awt.event.KeyEvent;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.sql.*;
 import javax.swing.JOptionPane;
+import project.ConnectionProvider;
 
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
@@ -27,9 +24,82 @@ public class PassWord extends javax.swing.JFrame {
         initComponents();
         txtsq.setEditable(false);
     }
-PreparedStatement pst;
-    Statement st=null;
-    ResultSet rs;
+    // helper methods will use ConnectionProvider; remove old shared JDBC fields
+
+    // Refactoring: Extract Method for Search Logic
+    private void searchEmail() {
+        String email = txtemail.getText().trim();
+        if (email.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter an Email ID");
+            return;
+        }
+
+        try (Connection con = ConnectionProvider.getCon();
+             PreparedStatement pst = con.prepareStatement("SELECT sq FROM signup WHERE email=?")) {
+
+            pst.setString(1, email);
+            ResultSet rs = pst.executeQuery();
+
+            if (rs.next()) {
+                txtsq.setText(rs.getString("sq"));
+                txtans.requestFocus();
+            } else {
+                JOptionPane.showMessageDialog(this, "Email ID does not exist");
+            }
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Database Error: " + ex.getMessage());
+        }
+    }
+
+    // Refactoring: Consolidated Duplicate logic into one method
+    private void performPasswordReset() {
+        String email = txtemail.getText();
+        String answer = txtans.getText();
+        String newPassword = txtpassword.getText();
+
+        if (txtsq.getText().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Enter Email and Search it");
+            txtemail.requestFocus();
+            return;
+        }
+        if (answer.isEmpty() || newPassword.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Answer and Password fields cannot be empty");
+            return;
+        }
+
+        try (Connection con = ConnectionProvider.getCon();
+             PreparedStatement pstCheck = con.prepareStatement("SELECT * FROM signup WHERE answer=? AND email=?")) {
+
+            pstCheck.setString(1, answer);
+            pstCheck.setString(2, email);
+            ResultSet rs = pstCheck.executeQuery();
+
+            if (rs.next()) {
+                updatePassword(email, newPassword);
+            } else {
+                JOptionPane.showMessageDialog(this, "Wrong Answer Entered", "Error", JOptionPane.WARNING_MESSAGE);
+                txtpassword.setText("");
+                txtans.setText("");
+            }
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage());
+        }
+    }
+
+    private void updatePassword(String email, String password) {
+        try (Connection con = ConnectionProvider.getCon();
+             PreparedStatement pst = con.prepareStatement("UPDATE signup SET password=? WHERE email=?")) {
+            pst.setString(1, password);
+            pst.setString(2, email);
+            pst.executeUpdate();
+
+            JOptionPane.showMessageDialog(this, "Password Reset Successfully. Login Now", "Success", JOptionPane.INFORMATION_MESSAGE);
+            new SignIn().setVisible(true);
+            this.dispose();
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+        }
+    }
     
     /**
      * This method is called from within the constructor to initialize the form.
@@ -219,72 +289,11 @@ PreparedStatement pst;
     }//GEN-LAST:event_jButton3ActionPerformed
 
     private void btnsearchActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnsearchActionPerformed
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            java.sql.Connection con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-            //st=con.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,ResultSet.CONCUR_READ_ONLY);
-            pst=con.prepareStatement("select sq from signup where email=?");
-            pst.setString(1, txtemail.getText());
-            rs=pst.executeQuery();
-            if(rs.next()){
-                txtsq.setText(rs.getString("sq"));
-                }
-            else
-                JOptionPane.showMessageDialog(this,"Email id not exist");
-            txtans.setText("");
-            txtpassword.setText("");
-        } catch (ClassNotFoundException | SQLException ex) {
-           // Logger.getLogger(Product.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        // TODO add your handling code here:
+        searchEmail();
     }//GEN-LAST:event_btnsearchActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
-    if(txtsq.getText().equals("")){
-        JOptionPane.showMessageDialog(this,"Enter Email and Search it");   
-        txtemail.requestFocus();
-    }
-    else if(txtans.getText().equals("")){
-        JOptionPane.showMessageDialog(this,"Enter vaild Answer");
-        txtans.requestFocus();
-    }
-    else if(txtpassword.getText().equals("")){
-        JOptionPane.showMessageDialog(this," Password Field Not Empity");
-        txtpassword.requestFocus();
-    }
-    else{
-        try {
-        Class.forName("com.mysql.cj.jdbc.Driver");
-        java.sql.Connection conn=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-        //st=conn.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,ResultSet.CONCUR_READ_ONLY);
-        pst=conn.prepareStatement("select * from signup where answer=? and email=?");
-        pst.setString(1, txtans.getText());
-        pst.setString(2, txtemail.getText());
-        rs=pst.executeQuery();
-        if(rs.next()){
-            try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            java.sql.Connection con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-            pst=con.prepareStatement("update signup set password=? where email=?");
-            pst.setString(1, txtpassword.getText());
-            pst.setString(2, txtemail.getText());
-            pst.executeUpdate();
-            JOptionPane.showMessageDialog(this, "Password Reset\nLogin Now","Success",JOptionPane.INFORMATION_MESSAGE);
-            new SignIn().setVisible(true); 
-        } catch (ClassNotFoundException | SQLException ex) {
-            Logger.getLogger(PassWord.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        }
-        else{
-            JOptionPane.showMessageDialog(this, "Wrong Answer Entery","Wrong",JOptionPane.WARNING_MESSAGE);
-            txtpassword.setText("");
-            txtans.setText("");
-        }
-    }catch(Exception e){
-        
-    }
-        
-    }
+        performPasswordReset();
     }//GEN-LAST:event_jButton2ActionPerformed
 
     private void txtansKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtansKeyPressed
@@ -293,56 +302,9 @@ if(evt.getKeyCode()==KeyEvent.VK_ENTER)
     }//GEN-LAST:event_txtansKeyPressed
 
     private void txtpasswordKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtpasswordKeyPressed
-if(evt.getKeyCode()==KeyEvent.VK_ENTER){
-    if(txtsq.getText().equals("")){
-        JOptionPane.showMessageDialog(this,"Enter Email and Search it");   
-        txtemail.requestFocus();
-    }
-    else if(txtsq.getText().equals("")){
-        JOptionPane.showMessageDialog(this,"Enter vaild Answer");
-        txtans.requestFocus();
-    }
-    else if(txtpassword.getText().equals("")){
-        JOptionPane.showMessageDialog(this,"set Password Field Not Empity");
-        txtpassword.requestFocus();
-    }
-    else{
-        try {
-        Class.forName("com.mysql.cj.jdbc.Driver");
-        java.sql.Connection conn=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-        st=conn.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,ResultSet.CONCUR_READ_ONLY);
-        pst=conn.prepareStatement("select * from signup where answer=?");
-        pst.setString(1, txtans.getText());
-        rs=pst.executeQuery();
-        if(rs.next()){
-           //txtsq.setText(rs.getString("answer"));
-           //}
-            try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            java.sql.Connection con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-            pst=con.prepareStatement("update signup set password=? where email=?");
-            pst.setString(1, txtpassword.getText());
-            pst.setString(2, txtemail.getText());
-            pst.executeUpdate();
-            JOptionPane.showMessageDialog(this, "Password Reset\nLogin now","Success",JOptionPane.INFORMATION_MESSAGE);
-            new SignIn().setVisible(true); 
-
-        } catch (ClassNotFoundException | SQLException ex) {
-            Logger.getLogger(PassWord.class.getName()).log(Level.SEVERE, null, ex);
+        if (evt.getKeyCode() == KeyEvent.VK_ENTER) {
+            performPasswordReset();
         }
-        }
-        else{
-            JOptionPane.showMessageDialog(this, "Wrong Answer Entery","Wrong",JOptionPane.WARNING_MESSAGE);
-            txtpassword.setText("");
-            txtans.setText("");
-            txtans.requestFocus();
-        }
-    }catch(Exception e){
-        
-    }
-        
-    }
-}// TODO add your handling code here:
     }//GEN-LAST:event_txtpasswordKeyPressed
 
     private void txtemailKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtemailKeyReleased

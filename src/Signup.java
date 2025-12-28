@@ -1,12 +1,10 @@
+package hotel.management.system;
 
 import java.awt.event.KeyEvent;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
+import project.ConnectionProvider;
 
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
@@ -18,12 +16,81 @@ import javax.swing.JOptionPane;
  * @author Sudhir Kushwaha
  */
 public class Signup extends javax.swing.JFrame {
-  int flag=0;
+        private int passwordToggleFlag = 0;
     /**
      * Creates new form Signup
      */
     public Signup() {
         initComponents();
+    }
+
+    // Refactoring: Extract Method to handle consolidated registration logic
+    private void registerUser() {
+        if (!validateFields()) return;
+
+        String email = txtemail.getText().trim().toLowerCase();
+        
+        try (Connection con = ConnectionProvider.getCon()) {
+            // Check for existing email
+            if (emailExists(con, email)) {
+                JOptionPane.showMessageDialog(this, "Email ID already exists. Please use another.");
+                txtemail.requestFocus();
+                return;
+            }
+
+            // Insert new user
+            insertUser(con, email);
+            
+            JOptionPane.showMessageDialog(this, "Registered Successfully. Login Now.");
+            new SignIn().setVisible(true);
+            this.dispose();
+            
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Database Error: " + ex.getMessage());
+        }
+    }
+
+    private boolean validateFields() {
+        if (txtname.getText().isEmpty() || txtemail.getText().isEmpty() || 
+            new String(txtpassword.getPassword()).isEmpty() || txtans.getText().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "All fields are required.");
+            return false;
+        }
+        return true;
+    }
+
+    private boolean emailExists(Connection con, String email) throws SQLException {
+        String query = "SELECT email FROM signup WHERE email=?";
+        try (PreparedStatement pst = con.prepareStatement(query)) {
+            pst.setString(1, email);
+            ResultSet rs = pst.executeQuery();
+            return rs.next();
+        }
+    }
+
+    private void insertUser(Connection con, String email) throws SQLException {
+        String insertQuery = "INSERT INTO signup(name,email,password,sq,answer) VALUES(?,?,?,?,?)";
+        try (PreparedStatement pst = con.prepareStatement(insertQuery)) {
+            pst.setString(1, txtname.getText());
+            pst.setString(2, email);
+            pst.setString(3, new String(txtpassword.getPassword()));
+            pst.setString(4, (String) jComboBox1.getSelectedItem());
+            pst.setString(5, txtans.getText());
+            pst.executeUpdate();
+        }
+    }
+
+    private void togglePasswordVisibility() {
+        // Refactoring: Use relative paths for portability
+        if (passwordToggleFlag == 0) {
+            jLabel9.setIcon(new ImageIcon(getClass().getResource("/image/s.png")));
+            txtpassword.setEchoChar((char) 0);
+            passwordToggleFlag = 1;
+        } else {
+            jLabel9.setIcon(new ImageIcon(getClass().getResource("/image/h.png")));
+            txtpassword.setEchoChar('*');
+            passwordToggleFlag = 0;
+        }
     }
 
     /**
@@ -220,62 +287,7 @@ public class Signup extends javax.swing.JFrame {
     }//GEN-LAST:event_jLabel1MouseClicked
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-    if(txtname.getText().equals("")){
-        JOptionPane.showMessageDialog(this,"All Field is required");
-        txtname.requestFocus();
-        }  
-    else if(txtemail.getText().equals("")){
-         JOptionPane.showMessageDialog(this,"All Field is required");
-         txtemail.requestFocus();
-    }
-    else if(txtpassword.getText().equals("")){
-        JOptionPane.showMessageDialog(this,"All Field is required");
-        txtpassword.requestFocus();
-        }
-    else if(txtans.getText().equals("")){
-        JOptionPane.showMessageDialog(this,"All Field is required");
-        txtans.requestFocus();
-        }
-    else{    
-    PreparedStatement pst=null;
-    Statement st=null;
-    ResultSet rs=null;
-    java.sql.Connection con=null;
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-           // st=con.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,ResultSet.CONCUR_READ_ONLY);
-            pst=con.prepareStatement("select * from signup where email=?");
-            pst.setString(1, txtemail.getText());
-            rs=pst.executeQuery();
-            if(rs.next()){
-                JOptionPane.showMessageDialog(this,"Use Another Email ID");
-                txtemail.requestFocus();
-            }
-            else{
-           //      try {
-            //Class.forName("com.mysql.cj.jdbc.Driver");
-            //con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-            pst=con.prepareStatement("insert into signup(name,email,password,sq,answer)values(?,?,?,?,?)");
-            pst.setString(1, txtname.getText());
-            pst.setString(2, txtemail.getText().toLowerCase());
-            pst.setString(3, txtpassword.getText());
-            pst.setString(4, jComboBox1.getItemAt(jComboBox1.getSelectedIndex()));
-            pst.setString(5, txtans.getText());
-            pst.executeUpdate();
-            JOptionPane.showMessageDialog(this, "Registered Successfully\nLogin Now");
-           new SignIn().setVisible(true);  
-       // } catch (SQLException ex) {
-            //Logger.getLogger(Record.class.getName()).log(Level.SEVERE, null, ex);
-       // }
-                
-                
-            }
-            
-        } catch (ClassNotFoundException | SQLException ex) {
-           //Logger.getLogger(Record.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
+        registerUser();
         
         
         
@@ -297,81 +309,24 @@ public class Signup extends javax.swing.JFrame {
     }//GEN-LAST:event_jButton2ActionPerformed
 
     private void txtansKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtansKeyPressed
-if(evt.getKeyCode()==KeyEvent.VK_ENTER){
-        if(txtname.getText().equals("")){
-        JOptionPane.showMessageDialog(this,"All Field is required");
-        txtname.requestFocus();
-        }  
-    else if(txtemail.getText().equals("")){
-         JOptionPane.showMessageDialog(this,"All Field is required");
-         txtemail.requestFocus();
-    }
-    else if(txtpassword.getText().equals("")){
-        JOptionPane.showMessageDialog(this,"All Field is required");
-        txtpassword.requestFocus();
+        if (evt.getKeyCode() == KeyEvent.VK_ENTER) {
+            registerUser();
         }
-    else if(txtans.getText().equals("")){
-        JOptionPane.showMessageDialog(this,"All Field is required");
-        txtans.requestFocus();
-        }
-    else{    
-    PreparedStatement pst=null;
-    Statement st=null;
-    ResultSet rs=null;
-    java.sql.Connection con=null;
-   
-        
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-            st=con.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,ResultSet.CONCUR_READ_ONLY);
-            pst=con.prepareStatement("select * from signup where email=?");
-            pst.setString(1, txtemail.getText());
-            rs=pst.executeQuery();
-            if(rs.next()){
-                JOptionPane.showMessageDialog(this,"Use Another Email ID");
-                txtemail.requestFocus();
-            }
-            else{
-                 try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-            pst=con.prepareStatement("insert into signup(name,email,password,sq,answer)values(?,?,?,?,?)");
-            pst.setString(1, txtname.getText());
-            pst.setString(2, txtemail.getText().toLowerCase());
-            pst.setString(3, txtpassword.getText());
-            pst.setString(4, jComboBox1.getItemAt(jComboBox1.getSelectedIndex()));
-            pst.setString(5, txtans.getText());
-            pst.executeUpdate();
-            JOptionPane.showMessageDialog(this, "Registered Successfully\nLogin Now ");
-            new SignIn().setVisible(true);  
-        } catch (ClassNotFoundException | SQLException ex) {
-            //Logger.getLogger(Record.class.getName()).log(Level.SEVERE, null, ex);
-        }
-                
-                
-            }
-            
-        } catch (ClassNotFoundException | SQLException ex) {
-           //Logger.getLogger(Record.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }
-}// TODO add your handling code here:
     }//GEN-LAST:event_txtansKeyPressed
 
     private void txtnameKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtnameKeyPressed
-if(evt.getKeyCode()==KeyEvent.VK_ENTER){
-    txtemail.requestFocus();// TODO add your handling code here:
+        if(evt.getKeyCode()==KeyEvent.VK_ENTER){
+            txtemail.requestFocus();// TODO add your handling code here:
+        }
     }//GEN-LAST:event_txtnameKeyPressed
-    }
     private void txtemailKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtemailKeyPressed
     if(evt.getKeyCode()==KeyEvent.VK_ENTER)
     txtpassword.requestFocus();// TODO add your handling code here:
     }//GEN-LAST:event_txtemailKeyPressed
 
     private void txtpasswordKeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtpasswordKeyPressed
- if(evt.getKeyCode()==KeyEvent.VK_ENTER)
-    jComboBox1.requestFocus();        // TODO add your handling code here:
+    if (evt.getKeyCode() == KeyEvent.VK_ENTER)
+        jComboBox1.requestFocus();        // TODO add your handling code here:
     }//GEN-LAST:event_txtpasswordKeyPressed
 
     private void jComboBox1KeyPressed(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_jComboBox1KeyPressed
@@ -380,19 +335,7 @@ if(evt.getKeyCode()==KeyEvent.VK_ENTER){
     }//GEN-LAST:event_jComboBox1KeyPressed
 
     private void jLabel9MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jLabel9MouseClicked
-
-if(flag==0){
-   jLabel9.setIcon(new ImageIcon("C:\\Users\\Sudhir\\OneDrive\\Pictures\\Documents\\NetBeansProjects\\Hotel Management System\\src\\s.png"));
-   flag=1;
-   txtpassword.setEchoChar((char)0);
-}
-else
-{
-    jLabel9.setIcon(new ImageIcon("C:\\Users\\Sudhir\\OneDrive\\Pictures\\Documents\\NetBeansProjects\\Hotel Management System\\src\\h.png"));
-    flag=0;
-    txtpassword.setEchoChar('*');
-     
-}        // TODO add your handling code here:
+        togglePasswordVisibility();
     }//GEN-LAST:event_jLabel9MouseClicked
 
     private void txtemailKeyReleased(java.awt.event.KeyEvent evt) {//GEN-FIRST:event_txtemailKeyReleased

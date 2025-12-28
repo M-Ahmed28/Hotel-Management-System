@@ -1,36 +1,55 @@
+package hotel.management.system;
 
+import javax.swing.SwingUtilities;
 
 public class Start1 extends javax.swing.JFrame {
 
     public Start1() {
         initComponents();
-        Thread t = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                for (int i = 0; i <= 100; i++) {
-                    try {
-                        jProgressBar1.setValue(i);
-                        Thread.sleep(50);
-                        if(jProgressBar1.getString().equals("100%"))
-                            new SignIn().setVisible(true);
-                        if(jProgressBar1.getString().equals("50%")){
-                            jLabel2.setText("Loading Modules.....");
-                            
-                        }
-                        if(jProgressBar1.getString().equals("25%")){
-                            jLabel2.setText("Connecting Database....");
-                            //jLabel1.setForeground(Color.WHITE);
-                            }
-                        if(jProgressBar1.getString().equals("95%"))
-                            jLabel2.setText("Launching Aplication....");
-                    } catch (InterruptedException ex) {
-                        //Logger.getLogger(NewJFrame.class.getName()).log(Level.SEVERE, null, ex);
-                    }
+        startLoadingProcess();
+    }
+
+    // Refactoring: Extract Method (Separating threading logic)
+    private void startLoadingProcess() {
+        new Thread(() -> {
+            for (int progress = 0; progress <= 100; progress++) {
+                try {
+                    updateProgressUI(progress);
+                    Thread.sleep(50);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    break;
                 }
             }
-        });
-        t.start();
+        }).start();
+    }
 
+    // Refactoring: Extract Method (Centralizing UI updates on the EDT)
+    private void updateProgressUI(int value) {
+        SwingUtilities.invokeLater(() -> {
+            jProgressBar1.setValue(value);
+            updateStatusText(value);
+            
+            if (value == 100) {
+                navigateToSignIn();
+            }
+        });
+    }
+
+    // Refactoring: Substitute Algorithm (Using integer logic instead of String checks)
+    private void updateStatusText(int value) {
+        if (value == 25) {
+            jLabel2.setText("Connecting Database....");
+        } else if (value == 50) {
+            jLabel2.setText("Loading Modules.....");
+        } else if (value == 95) {
+            jLabel2.setText("Launching Application....");
+        }
+    }
+
+    private void navigateToSignIn() {
+        new SignIn().setVisible(true);
+        this.dispose();
     }
 
     @SuppressWarnings("unchecked")

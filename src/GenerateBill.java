@@ -1,11 +1,9 @@
+package hotel.management.system;
 
 import java.awt.print.PrinterException;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.sql.*;
+import javax.swing.JOptionPane;
+import project.ConnectionProvider;
 
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
@@ -18,70 +16,56 @@ import java.util.logging.Logger;
  */
 public class GenerateBill extends javax.swing.JFrame {
     
-    String id=CustomerDetailsBill.idd;
-    String nm;
-    String mobile;
-    String email;
-    String roomnumber;
-    String bed;
-    String type;
-    String indate;
-    String outdate;
-    String price;
-    String days;
-    String amount;
-    
-    /**
-     * Creates new form GenerateBill
-     */
+    // Rationale: Using local fields for now, but centralizing the data fetch
+    private final String billId = CustomerDetailsBill.idd;
+
     public GenerateBill() {
         initComponents();
-        connect();
-        txtbill.setText("\t\t-: Kushwaha Hotel :-\n");
-        txtbill.setText(txtbill.getText()+"**********************************************************************************\n");
-        txtbill.setText(txtbill.getText()+"Bill ID:- "+id+"\n");
-        txtbill.setText(txtbill.getText()+"Customer Details:- \n");
-        txtbill.setText(txtbill.getText()+"Name:- "+nm+"\n");
-        txtbill.setText(txtbill.getText()+"Mobile Number:- "+mobile+"\n");
-        txtbill.setText(txtbill.getText()+"Email:- "+email+"\n");
-        txtbill.setText(txtbill.getText()+"**********************************************************************************\n");
-        txtbill.setText(txtbill.getText()+"Room Details:- \n");
-        txtbill.setText(txtbill.getText()+"Room Number:- "+roomnumber+"\n");
-        txtbill.setText(txtbill.getText()+"Type:- "+type+"\n");
-        txtbill.setText(txtbill.getText()+"Bed:- "+bed+"\n");
-        txtbill.setText(txtbill.getText()+"Price:- "+price+"\n");
-        txtbill.setText(txtbill.getText()+"Check IN Date="+indate+"\t\tNumber of Days="+days+"\n");
-        txtbill.setText(txtbill.getText()+"Check OUT Date="+outdate+"\t\tTotal Amount="+amount+"\n");
-        txtbill.setText(txtbill.getText()+"**********************************************************************************\n");
-        txtbill.setText(txtbill.getText()+"\t\t"+"                    Thank You,Please Visit Again.");
-        }
-    public void connect(){
-        PreparedStatement pst;
-        ResultSet rs;
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            java.sql.Connection con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-            pst=con.prepareStatement("select * from customer where billid=?");
-            pst.setString(1,id);
-            rs=pst.executeQuery();
-            if(rs.next()){
-                email=rs.getString("email");
-                nm=rs.getString("name");
-                mobile=rs.getString("mobile");
-                roomnumber=rs.getString("roomnumber");
-                bed=rs.getString("bed");
-                type=rs.getString("roomtype");
-                indate=rs.getString("date");
-                outdate=rs.getString("outdate");
-                price=rs.getString("price");
-                days =rs.getString("days");
-                amount=rs.getString("amount");
-   
-            }
+        fetchAndDisplayBill();
+    }
+
+    private void fetchAndDisplayBill() {
+        String query = "SELECT * FROM customer WHERE billid=?";
         
-        } catch (ClassNotFoundException | SQLException ex) {
-            Logger.getLogger(GenerateBill.class.getName()).log(Level.SEVERE, null, ex);
+        try (Connection con = ConnectionProvider.getCon();
+             PreparedStatement pst = con.prepareStatement(query)) {
+            
+            pst.setString(1, billId);
+            ResultSet rs = pst.executeQuery();
+            
+            if (rs.next()) {
+                String billText = constructBillString(rs);
+                txtbill.setText(billText);
+            }
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Error generating bill: " + ex.getMessage());
         }
+    }
+
+    // Refactoring: Extract Method (Building the string logic)
+    private String constructBillString(ResultSet rs) throws SQLException {
+        StringBuilder sb = new StringBuilder();
+        sb.append("\t\t-: Kushwaha Hotel :-\n");
+        sb.append("**********************************************************************************\n");
+        sb.append("Bill ID:- ").append(billId).append("\n");
+        sb.append("Customer Details:- \n");
+        sb.append("Name:- ").append(rs.getString("name")).append("\n");
+        sb.append("Mobile Number:- ").append(rs.getString("mobile")).append("\n");
+        sb.append("Email:- ").append(rs.getString("email")).append("\n");
+        sb.append("**********************************************************************************\n");
+        sb.append("Room Details:- \n");
+        sb.append("Room Number:- ").append(rs.getString("roomnumber")).append("\n");
+        sb.append("Type:- ").append(rs.getString("roomtype")).append("\n");
+        sb.append("Bed:- ").append(rs.getString("bed")).append("\n");
+        sb.append("Price:- ").append(rs.getString("price")).append("\n");
+        sb.append("Check IN Date=").append(rs.getString("date"))
+          .append("\t\tNumber of Days=").append(rs.getString("days")).append("\n");
+        sb.append("Check OUT Date=").append(rs.getString("outdate"))
+          .append("\t\tTotal Amount=").append(rs.getString("amount")).append("\n");
+        sb.append("**********************************************************************************\n");
+        sb.append("\t\t").append("                    Thank You, Please Visit Again.");
+        
+        return sb.toString();
     }
     /**
      * This method is called from within the constructor to initialize the form.
@@ -163,7 +147,7 @@ dispose();
         try {
             txtbill.print();        // TODO add your handling code here:
         } catch (PrinterException ex) {
-            Logger.getLogger(GenerateBill.class.getName()).log(Level.SEVERE, null, ex);
+            JOptionPane.showMessageDialog(this, "Printing failed: " + ex.getMessage());
         }
     }//GEN-LAST:event_jButton1ActionPerformed
 

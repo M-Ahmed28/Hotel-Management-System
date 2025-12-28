@@ -1,14 +1,11 @@
 
-import com.mysql.cj.jdbc.result.ResultSetMetaData;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+package hotel.management.system;
+
+import java.sql.*;
 import java.util.Vector;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
+import project.ConnectionProvider;
 
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
@@ -21,46 +18,38 @@ import javax.swing.table.DefaultTableModel;
  */
 public class ManageRoom extends javax.swing.JFrame {
     
-   String s2;
+    private String selectedRoomNumber; // Renamed from s2 for clarity
      /**
      * Creates new form ManageRoom
      */
     public ManageRoom() {
         initComponents();
-        s();
-        jButton3.setVisible(false);       
+        refreshTable();
+        jButton3.setVisible(false);
     }
-    public void s(){
-    PreparedStatement pst=null;
-    Statement st=null;
-    ResultSet rs=null;
-    Connection con=null; 
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-            pst=con.prepareStatement("Select * from room");
-            rs=pst.executeQuery();
-            ResultSetMetaData stData=(ResultSetMetaData) rs.getMetaData();
-            //System.out.print(stData);
-            int q=stData.getColumnCount();
-            DefaultTableModel RecordTable= (DefaultTableModel) jTable1.getModel();
-            //System.out.print(RecordTable);
-            RecordTable.setRowCount(0);
-            while(rs.next()){
-                //Vector is like the dynamic array.
-                Vector columnData=new Vector();
-                for(int i=1;i<=q;i++){
-                    columnData.add(rs.getString("roomnumber"));
-                    columnData.add(rs.getString("roomtype"));
-                    columnData.add(rs.getString("bed"));
-                    columnData.add(rs.getString("price"));
-                    columnData.add(rs.getString("status"));
-                }
-                RecordTable.addRow(columnData);
-                //System.out.println(columnData);
 
-            }  
-        } catch (ClassNotFoundException | SQLException ex) {}                
+    // Refactoring: Extract Method (Centralized Data Loading)
+    public void refreshTable() {
+        DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
+        model.setRowCount(0);
+        
+        try (Connection con = ConnectionProvider.getCon();
+             Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT * FROM room")) {
+            
+            int columnCount = rs.getMetaData().getColumnCount();
+            while (rs.next()) {
+                Vector<String> row = new Vector<>();
+                row.add(rs.getString("roomnumber"));
+                row.add(rs.getString("roomtype"));
+                row.add(rs.getString("bed"));
+                row.add(rs.getString("price"));
+                row.add(rs.getString("status"));
+                model.addRow(row);
+            }
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Error loading data: " + e.getMessage());
+        }
     }
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
@@ -210,110 +199,86 @@ dispose();
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
-    if(txtno.getText().equals("")){
-      JOptionPane.showMessageDialog(this, "All Field is Requied");
-      txtno.requestFocus();
-    }
-    else if(txtprice.getText().equals("")){
-       JOptionPane.showMessageDialog(this, "All Field is Requied");
-       txtprice.requestFocus();
-    }   
-    else{   
-        
-        PreparedStatement pst=null;
-        Statement st=null;
-        ResultSet rs=null;
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            java.sql.Connection con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-           // st=con.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,ResultSet.CONCUR_READ_ONLY);
-            pst=con.prepareStatement("select * from room where roomnumber=?");
-            pst.setString(1, txtno.getText());
-            rs=pst.executeQuery();
-            if(rs.next()){
-                JOptionPane.showMessageDialog(this,"Room Number Already Exist");
-            }
-            else{
-                try{
-                    double pric=Double.parseDouble(txtprice.getText());
-                       
-                        try {
-                        Class.forName("com.mysql.cj.jdbc.Driver");
-                        con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-                        pst=con.prepareStatement("insert into room(roomnumber,roomtype,bed,price,status)values(?,?,?,?,?)");
-                        pst.setString(1, txtno.getText());
-                        pst.setString(2, jComboBox1.getItemAt(jComboBox1.getSelectedIndex()));
-                        pst.setString(3, jComboBox2.getItemAt(jComboBox2.getSelectedIndex()));
-                        pst.setString(4, txtprice.getText());
-                        pst.setString(5, "Not Booked");                       
-                        pst.executeUpdate();
-                        JOptionPane.showMessageDialog(this, "Room Added");
-                        s();
-                        txtprice.setText("");
-                        txtno.setText("");
-                  
-                } catch (ClassNotFoundException | SQLException ex) {}
-                }catch(Exception e){
-                    JOptionPane.showMessageDialog(this,"Price is not valied");
-                    }
-                
-            }
-            
-        } catch (ClassNotFoundException | SQLException ex) {
-           //Logger.getLogger(Record.class.getName()).log(Level.SEVERE, null, ex);
+        if (txtno.getText().isEmpty() || txtprice.getText().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "All Fields are Required");
+            return;
         }
-   
-    }    
+
+        try (Connection con = ConnectionProvider.getCon();
+             PreparedStatement checkPst = con.prepareStatement("SELECT * FROM room WHERE roomnumber=?")) {
+
+            checkPst.setString(1, txtno.getText());
+            if (checkPst.executeQuery().next()) {
+                JOptionPane.showMessageDialog(this, "Room Number Already Exists");
+                return;
+            }
+
+            double price = Double.parseDouble(txtprice.getText()); // Validation
+            String insertQuery = "INSERT INTO room(roomnumber, roomtype, bed, price, status) VALUES(?,?,?,?,?)";
+            try (PreparedStatement pst = con.prepareStatement(insertQuery)) {
+                pst.setString(1, txtno.getText());
+                pst.setString(2, (String) jComboBox1.getSelectedItem());
+                pst.setString(3, (String) jComboBox2.getSelectedItem());
+                pst.setString(4, txtprice.getText());
+                pst.setString(5, "Not Booked");
+                pst.executeUpdate();
+
+                JOptionPane.showMessageDialog(this, "Room Added Successfully");
+                clearAndRefresh();
+            }
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "Price is not valid");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         
     }//GEN-LAST:event_jButton2ActionPerformed
 
     private void jTable1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTable1MouseClicked
-    if(evt.getClickCount()==2){
-        String check=JOptionPane.showInputDialog(this,"If you want to Delete this Record Write here to Delete\nIf you want to Update this Record then Write here update");
-        if(check.equalsIgnoreCase("delete")){
-            DefaultTableModel dmodel=(DefaultTableModel) jTable1.getModel();
-            int rows=jTable1.getSelectedRow();
-            s2=(String) dmodel.getValueAt(rows,0);
-            String s1=(String) dmodel.getValueAt(rows,4);
-            if(s1.equalsIgnoreCase("booked"))
-               JOptionPane.showMessageDialog(this,"Sorry Room is Booked So unable to delete it");
-            else{
-                PreparedStatement pst;
-                java.sql.Connection con;
-                try {
-                    Class.forName("com.mysql.cj.jdbc.Driver");
-                    con = DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel", "root", "Sudhir@123");
-                    pst = con.prepareStatement("delete from room where roomnumber=?");
-                    pst.setString(1,s2);
-                    pst.executeUpdate();
-                    s();
-                }
-                catch(Exception e){}               
+        if (evt.getClickCount() == 2) {
+            int row = jTable1.getSelectedRow();
+            selectedRoomNumber = (String) jTable1.getValueAt(row, 0);
+            String status = (String) jTable1.getValueAt(row, 4);
+
+            if (status.equalsIgnoreCase("booked")) {
+                JOptionPane.showMessageDialog(this, "Room is Booked and cannot be modified.");
+                return;
+            }
+
+            String action = JOptionPane.showInputDialog(this, "Type 'delete' to remove or 'update' to edit:");
+            if ("delete".equalsIgnoreCase(action)) {
+                executeDelete();
+            } else if ("update".equalsIgnoreCase(action)) {
+                prepareUpdate(row);
             }
         }
-        if(check.equalsIgnoreCase("update")){
-            DefaultTableModel dmodel=(DefaultTableModel) jTable1.getModel();
-            int rows=jTable1.getSelectedRow();
-            s2=(String) dmodel.getValueAt(rows,0);
-            String s1=(String) dmodel.getValueAt(rows,4);
-            String s3=(String) dmodel.getValueAt(rows,1);
-            String s4=(String) dmodel.getValueAt(rows,2);
-            String s5=(String) dmodel.getValueAt(rows,3);
-            if(s1.equalsIgnoreCase("booked"))
-               JOptionPane.showMessageDialog(this,"Sorry Room is Booked So unable to Update it");
-            else{
-                jButton3.setVisible(true);
-                jButton2.setVisible(false);
-                txtno.setText(s2);
-                txtprice.setText(s5);
-                txtno.setEditable(false);
-                txtno.setEditable(true);
-                
-            }
-        }
-        
-    }
     }//GEN-LAST:event_jTable1MouseClicked
+
+    private void executeDelete() {
+        try (Connection con = ConnectionProvider.getCon();
+             PreparedStatement pst = con.prepareStatement("DELETE FROM room WHERE roomnumber=?")) {
+            pst.setString(1, selectedRoomNumber);
+            pst.executeUpdate();
+            refreshTable();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void prepareUpdate(int row) {
+        jButton3.setVisible(true);
+        jButton2.setVisible(false);
+        txtno.setText(selectedRoomNumber);
+        txtprice.setText((String) jTable1.getValueAt(row, 3));
+        txtno.setEditable(false);
+    }
+
+    private void clearAndRefresh() {
+        txtno.setText("");
+        txtprice.setText("");
+        txtno.setEditable(true);
+        refreshTable();
+    }
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
         
@@ -322,25 +287,20 @@ dispose();
         else{
                 String type=jComboBox1.getItemAt(jComboBox1.getSelectedIndex());
                 String bed=jComboBox2.getItemAt(jComboBox2.getSelectedIndex());
-                PreparedStatement pst;
-                java.sql.Connection con;
-                try {
-                    Class.forName("com.mysql.cj.jdbc.Driver");
-                    con = DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel", "root", "Sudhir@123");
-                    //pst=con.prepareStatement("update room set price="+txtprice.getText()+","+"roomtype="+type+" where roomnumber="+s2);
-                    pst=con.prepareStatement("update room set price=?,roomtype=?,bed=? where roomnumber=?");
-                    pst.setString(1,txtprice.getText() );
-                    pst.setString(2,type);
-                    pst.setString(3,bed);
-                    pst.setString(4,s2);
+                try (Connection con = ConnectionProvider.getCon();
+                     PreparedStatement pst = con.prepareStatement("UPDATE room SET price=?, roomtype=?, bed=? WHERE roomnumber=?")) {
+                    pst.setString(1, txtprice.getText());
+                    pst.setString(2, type);
+                    pst.setString(3, bed);
+                    pst.setString(4, selectedRoomNumber);
                     pst.executeUpdate();
                     JOptionPane.showMessageDialog(this, "Room Updated");
-                    s();
+                    clearAndRefresh();
                     jButton2.setVisible(true);
                     jButton3.setVisible(false);
-                  
-                }catch(Exception e){
-                    
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                    JOptionPane.showMessageDialog(this, "Error updating room: " + e.getMessage());
                 }
                 }        // TODO add your handling code here:
     }//GEN-LAST:event_jButton3ActionPerformed

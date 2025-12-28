@@ -1,14 +1,10 @@
+package hotel.management.system;
 
-import com.mysql.cj.jdbc.result.ResultSetMetaData;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.util.Vector;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
+import project.ConnectionProvider;
 
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
@@ -26,47 +22,34 @@ public class Admin extends javax.swing.JFrame {
      */
     public Admin() {
         initComponents();
-        s();
+        updateTable("Select * from signup"); // Use method extraction
         txtemail.requestFocus();
     }
-public void s(){
-    PreparedStatement pst=null;
-    Statement st=null;
-    ResultSet rs=null;
-    Connection con=null;
-    int q,i;
-   
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-            pst=con.prepareStatement("Select * from signup");
-            rs=pst.executeQuery();
-            ResultSetMetaData stData=(ResultSetMetaData) rs.getMetaData();
-            q=stData.getColumnCount();
-            DefaultTableModel RecordTable= (DefaultTableModel) jTable1.getModel();
-            RecordTable.setRowCount(0);
-            while(rs.next()){
-                Vector columnData=new Vector();
-                for(i=1;i<=q;i++){
-                    columnData.add(rs.getString("name"));
-                    columnData.add(rs.getString("email"));
-                    columnData.add(rs.getString("password"));
-                    columnData.add(rs.getString("sq"));
-                    columnData.add(rs.getString("answer"));
-                    columnData.add(rs.getString("status"));
-                    
-                }
-                RecordTable.addRow(columnData);
-            }
+    // Refactoring: Extract Method (Consolidated s() and search logic)
+    // Refactoring: Removed Dead Code (Empty catches/comments)
+    public void updateTable(String query) {
+        try (Connection con = ConnectionProvider.getCon();
+             PreparedStatement pst = con.prepareStatement(query)) {
             
+            // If the query is a search, we'd set parameters here
+            ResultSet rs = pst.executeQuery();
+            ResultSetMetaData stData = rs.getMetaData();
+            int columns = stData.getColumnCount();
             
-        } catch (ClassNotFoundException | SQLException ex) {
-            //Logger.getLogger(Record.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        
+            DefaultTableModel recordTable = (DefaultTableModel) jTable1.getModel();
+            recordTable.setRowCount(0);
 
-     
-}
+            while (rs.next()) {
+                Vector<String> columnData = new Vector<>();
+                for (int i = 1; i <= columns; i++) {
+                    columnData.add(rs.getString(i));
+                }
+                recordTable.addRow(columnData);
+            }
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Database Error: " + ex.getMessage());
+        }
+    }
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -172,100 +155,50 @@ new SignIn().setVisible(true);// TODO add your handling code here:
     }//GEN-LAST:event_jButton2ActionPerformed
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
-s();        // TODO add your handling code here:
+updateTable("Select * from signup");        // TODO add your handling code here:
     }//GEN-LAST:event_jButton3ActionPerformed
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-    if(txtemail.getText().equals("")){
-        JOptionPane.showMessageDialog(this,"Record Not Found");
+    String email = txtemail.getText(); // Refactoring: Inline Temp
+    if (email.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Record Not Found");
+    } else {
+        // Refactoring: Formatted query to use extracted method
+        updateTable("Select * from signup where email='" + email + "'");
     }
-    else{
-    PreparedStatement pst=null;
-    Statement st=null;
-    ResultSet rs=null;
-    Connection con=null;
-    int q,i;
-   
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-            pst=con.prepareStatement("Select * from signup where email=?");
-            pst.setString(1,txtemail.getText());
-            rs=pst.executeQuery();
-            ResultSetMetaData stData=(ResultSetMetaData) rs.getMetaData();
-            q=stData.getColumnCount();
-            DefaultTableModel RecordTable= (DefaultTableModel) jTable1.getModel();
-            RecordTable.setRowCount(0);
-            while(rs.next()){
-                Vector columnData=new Vector();
-                for(i=1;i<=q;i++){
-                    columnData.add(rs.getString("name"));
-                    columnData.add(rs.getString("email"));
-                    columnData.add(rs.getString("password"));
-                    columnData.add(rs.getString("sq"));
-                    columnData.add(rs.getString("answer"));
-                    columnData.add(rs.getString("status"));
-                    
-                }
-                RecordTable.addRow(columnData);
-            }
-            
-            
-        } catch (ClassNotFoundException | SQLException ex) {
-            JOptionPane.showMessageDialog(this,"Record Not Found"); //Logger.getLogger(Record.class.getName()).log(Level.SEVERE, null, ex);
-        }
-    }   
-        // TODO add your handling code here:
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void jTable1MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jTable1MouseClicked
-if(evt.getClickCount()==2){
+if (evt.getClickCount() == 2) {
+    DefaultTableModel recordTable = (DefaultTableModel) jTable1.getModel();
+    int selectedRow = jTable1.getSelectedRow();
+    String currentStatus = (String) recordTable.getValueAt(selectedRow, 5);
+    String email = (String) recordTable.getValueAt(selectedRow, 1);
     
-    DefaultTableModel RecordTable= (DefaultTableModel) jTable1.getModel();
-    int SelectedRows=jTable1.getSelectedRow();
-    String ck=((String) RecordTable.getValueAt(SelectedRows,5));
-    String email=((String) RecordTable.getValueAt(SelectedRows,1));
-    if(ck.equalsIgnoreCase("panding")){
-        int yes=JOptionPane.showConfirmDialog(this,"Staus is panding ,do you want to change it");
-        if(JOptionPane.YES_OPTION==yes){
-            PreparedStatement pst=null;
-            Connection con=null;
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-            pst = con.prepareStatement("update signup set status=? where email=?");
-            pst.setString(1, "approved");
-            pst.setString(2,email);
-            pst.executeUpdate();
-         s();
-        }catch(Exception e){
-            
-        }         
-        }
-        
+    // Refactoring: Extract Variable for status logic
+    String newStatus = currentStatus.equalsIgnoreCase("panding") ? "approved" : "panding";
+    String message = "Status is " + currentStatus + ", do you want to change it to " + newStatus + "?";
+
+    int response = JOptionPane.showConfirmDialog(this, message);
+    if (response == JOptionPane.YES_OPTION) {
+        updateUserStatus(email, newStatus);
     }
-    else{
-        int yes=JOptionPane.showConfirmDialog(this,"Staus is Approved ,do you want to change it");
-        if(JOptionPane.YES_OPTION==yes){
-            if(JOptionPane.YES_OPTION==yes){
-            PreparedStatement pst=null;
-            Connection con=null;
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-            pst = con.prepareStatement("update signup set status=? where email=?");
-            pst.setString(1, "panding");
-            pst.setString(2,email);
-            pst.executeUpdate();
-         s();
-        }catch(Exception e){
-            
-        }
-        }
-    }
-    }
-}     
+}
     }//GEN-LAST:event_jTable1MouseClicked
+
+    // Refactoring: Extract Method for DB Update
+    private void updateUserStatus(String email, String status) {
+        String updateQuery = "update signup set status=? where email=?";
+        try (Connection con = ConnectionProvider.getCon();
+             PreparedStatement pst = con.prepareStatement(updateQuery)) {
+            pst.setString(1, status);
+            pst.setString(2, email);
+            pst.executeUpdate();
+            updateTable("Select * from signup");
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Update Failed: " + e.getMessage());
+        }
+    }
 
     /**S
      * @param args the command line arguments

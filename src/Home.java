@@ -1,4 +1,6 @@
 
+package hotel.management.system;
+
 import javax.swing.JOptionPane;
 
 /*
@@ -17,6 +19,11 @@ public class Home extends javax.swing.JFrame {
      */
     public Home() {
         initComponents();
+    }
+
+    // Refactoring: Grouped Navigation Logic
+    private void openModule(javax.swing.JFrame frame) {
+        frame.setVisible(true);
     }
 
     /**
@@ -109,33 +116,34 @@ public class Home extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed
-       int yes=JOptionPane.showConfirmDialog(this, "Are you really Logout ?", "Logut",JOptionPane.YES_NO_OPTION);
-       if(JOptionPane.YES_OPTION==yes){
-            new SignIn().setVisible(true);          
-       }
+        int response = JOptionPane.showConfirmDialog(this, "Are you sure you want to Logout?", "Logout", JOptionPane.YES_NO_OPTION);
+        if (response == JOptionPane.YES_OPTION) {
+            this.dispose();
+            openModule(new SignIn());
+        }
     }//GEN-LAST:event_jButton5ActionPerformed
 
     private void jButton6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton6ActionPerformed
-int yes=JOptionPane.showConfirmDialog(this, "Are You Really Close This Application ?","Exit",JOptionPane.YES_NO_OPTION,JOptionPane.QUESTION_MESSAGE);
-        if(yes==JOptionPane.YES_OPTION){
+        int response = JOptionPane.showConfirmDialog(this, "Are you sure you want to Close This Application?", "Exit", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+        if (response == JOptionPane.YES_OPTION) {
             System.exit(0);
-        }       
+        }
     }//GEN-LAST:event_jButton6ActionPerformed
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
- new ManageRoom().setVisible(true);
+          openModule(new ManageRoom());
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
-new CustomerCheckIn().setVisible(true);
+        openModule(new CustomerCheckIn());
     }//GEN-LAST:event_jButton2ActionPerformed
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
-new CustomerCheckOut().setVisible(true);
+        openModule(new CustomerCheckOut());
     }//GEN-LAST:event_jButton3ActionPerformed
 
     private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
- new CustomerDetailsBill().setVisible(true);
+          openModule(new CustomerDetailsBill());
     }//GEN-LAST:event_jButton4ActionPerformed
 
     /**

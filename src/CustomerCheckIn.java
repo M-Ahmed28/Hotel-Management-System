@@ -1,14 +1,12 @@
+package hotel.management.system;
 
 import java.awt.HeadlessException;
 import java.awt.event.KeyEvent;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import javax.swing.JOptionPane;
+import project.ConnectionProvider;
 
 public class CustomerCheckIn extends javax.swing.JFrame {
 
@@ -17,35 +15,9 @@ public class CustomerCheckIn extends javax.swing.JFrame {
      * Creates new form CustomerCheckIn
      */
     public CustomerCheckIn() {
-        initComponents();
-         SimpleDateFormat  dat=new SimpleDateFormat("yyyy/MM/dd ");
-         Date d=new Date();
-         txtdate.setText(dat.format(d));
-         txtname.requestFocus();
-         
-         
-        PreparedStatement pst;
-        
-        ResultSet rs;
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            java.sql.Connection con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-            //st=con.createStatement(ResultSet.TYPE_SCROLL_SENSITIVE,ResultSet.CONCUR_READ_ONLY);
-            pst=con.prepareStatement("select roomnumber from room where status=? AND roomtype=? AND bed=?");
-            pst.setString(1,"Not Booked");
-            pst.setString(2, comboroomtype.getItemAt(comboroomtype.getSelectedIndex()));
-            pst.setString(3, combobed.getItemAt(combobed.getSelectedIndex()));
-            rs=pst.executeQuery();
-            while(rs.next()){
-                comboroomnumber.addItem(rs.getString("roomnumber"));
-            }
-            pst=con.prepareStatement("select price from room where roomnumber=?");
-            pst.setString(1,comboroomnumber.getItemAt(comboroomnumber.getSelectedIndex()));
-            rs=pst.executeQuery();
-            if(rs.next())
-            txtprice.setText(rs.getString("price"));
-        }catch(ClassNotFoundException | SQLException e){
-        }
+    initComponents();
+    setupInitialState();
+    refreshRoomData(); // Refactoring: Extract Method (Consolidated duplicate code)
         
     }
 
@@ -374,17 +346,12 @@ dispose();        // TODO add your handling code here:
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
-txtname.setText("");
-txtmob.setText("");
-txtnat.setText("");
-txtemail.setText("");
-txtadhar.setText("");
-txtaddres.setText("");
-combogender.setSelectedIndex(0);
-combobed.setSelectedIndex(0);
-comboroomtype.setSelectedIndex(0);
-if(comboroomnumber.getItemCount()==0)
-    txtprice.setText("");
+        // Use helper to clear text fields and reset selections
+        clearForm();
+        combogender.setSelectedIndex(0);
+        combobed.setSelectedIndex(0);
+        comboroomtype.setSelectedIndex(0);
+        refreshRoomData();
         // TODO add your handling code here:
     }//GEN-LAST:event_jButton3ActionPerformed
 
@@ -393,119 +360,49 @@ if(comboroomnumber.getItemCount()==0)
     }//GEN-LAST:event_txtdateActionPerformed
 
     private void comboroomnumberItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_comboroomnumberItemStateChanged
-            PreparedStatement pst;
-            ResultSet rs;
-            try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            java.sql.Connection con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-            pst=con.prepareStatement("select price from room where roomnumber=?");
-            pst.setString(1,comboroomnumber.getItemAt(comboroomnumber.getSelectedIndex()));
-            rs=pst.executeQuery();
-            if(rs.next())
-            txtprice.setText(rs.getString("price"));       
-            }catch(ClassNotFoundException | SQLException e){
-        }
+        // Refactoring: use helper
+        updateRoomPrice();
         
     }//GEN-LAST:event_comboroomnumberItemStateChanged
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
-    if(txtname.getText().equals("")){
-      JOptionPane.showMessageDialog(this, "All Field is Requied");
-      txtname.requestFocus();
-    }
-    else if(txtmob.getText().equals("")){
-       JOptionPane.showMessageDialog(this, "All Field is Requied");
-       txtmob.requestFocus();
-    }
-    else if(txtemail.getText().equals("")){
-      JOptionPane.showMessageDialog(this, "All Field is Requied");
-      txtemail.requestFocus();
-    }
-    else if(txtnat.getText().equals("")){
-       JOptionPane.showMessageDialog(this, "All Field is Requied");
-       txtnat.requestFocus();
-    }
-    else if(txtadhar.getText().equals("")){
-      JOptionPane.showMessageDialog(this, "All Field is Requied");
-      txtadhar.requestFocus();
-    }
-    else if(txtaddres.getText().equals("")){
-       JOptionPane.showMessageDialog(this, "All Field is Requied");
-       txtaddres.requestFocus();
-    }
-    else if(txtprice.getText().equals("")){
-       JOptionPane.showMessageDialog(this, "Sorry, This type of Room Not avaible Select another room ");
-       txtaddres.requestFocus();
-    }
-    else if(txtmob.getText().length()!=10){
-        JOptionPane.showMessageDialog(this, "Mobile Number Should be 10 Digit.");
-    }
-    else if(txtadhar.getText().length()!=12){
-        JOptionPane.showMessageDialog(this, "Adhar Number Should be 12 Digit.");
-    }
-    else{
-        try{
-        long l=Long.parseLong(txtmob.getText());
-        l=Long.parseLong(txtadhar.getText());
+        if (!validateInputs()) return;
+
+        String insertCust = "INSERT INTO customer(name,mobile,email,gender,address,id,nationality,date,roomnumber,bed,roomtype,price,status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)";
         
-        try {
-            PreparedStatement pst;
-            ResultSet rs;
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            java.sql.Connection con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-            pst=con.prepareStatement("insert into customer(name,mobile,email,gender,address,id,nationality,date,roomnumber,bed,roomtype,price,status)values(?,?,?,?,?,?,?,?,?,?,?,?,?)");
-            pst.setString(1, txtname.getText());
-            pst.setString(2, txtmob.getText());
-            pst.setString(3, txtemail.getText().toLowerCase());
-            pst.setString(4, combogender.getItemAt(combogender.getSelectedIndex()));
-            pst.setString(5, txtaddres.getText());
-            pst.setString(6, txtadhar.getText());
-            pst.setString(7, txtnat.getText());
-            pst.setString(8, txtdate.getText());
-            pst.setString(9, (String) comboroomnumber.getSelectedItem());
-            pst.setString(10,(String) combobed.getSelectedItem());
-            pst.setString(11, (String) comboroomtype.getSelectedItem());
-            pst.setString(12, txtprice.getText());
-            pst.setString(13,"NULL");
-            pst.executeUpdate();
-            JOptionPane.showMessageDialog(this, "Room Alloted");
-            pst=con.prepareStatement("update room set status=? where roomnumber=?");
-            pst.setString(1,"Booked" );
-            pst.setString(2, (String) comboroomnumber.getSelectedItem());
-            pst.executeUpdate();
-            pst=con.prepareStatement("select roomnumber from room where status=? AND roomtype=? AND bed=?");
-            pst.setString(1,"Not Booked");
-            pst.setString(2, comboroomtype.getItemAt(comboroomtype.getSelectedIndex()));
-            pst.setString(3, combobed.getItemAt(combobed.getSelectedIndex()));
-            rs=pst.executeQuery();
-            comboroomnumber.removeAllItems();
-            while(rs.next()){
-                comboroomnumber.addItem(rs.getString("roomnumber"));
+        try (Connection con = ConnectionProvider.getCon()) {
+            con.setAutoCommit(false); // Ensure both updates happen or neither does
+            
+            try (PreparedStatement pst = con.prepareStatement(insertCust)) {
+                pst.setString(1, txtname.getText());
+                pst.setString(2, txtmob.getText());
+                pst.setString(3, txtemail.getText().toLowerCase());
+                pst.setObject(4, combogender.getSelectedItem());
+                pst.setString(5, txtaddres.getText());
+                pst.setString(6, txtadhar.getText());
+                pst.setString(7, txtnat.getText());
+                pst.setString(8, txtdate.getText());
+                pst.setObject(9, comboroomnumber.getSelectedItem());
+                pst.setObject(10, combobed.getSelectedItem());
+                pst.setObject(11, comboroomtype.getSelectedItem());
+                pst.setString(12, txtprice.getText());
+                pst.setString(13, "NULL");
+                pst.executeUpdate();
             }
-            pst=con.prepareStatement("select price from room where roomnumber=?");
-            pst.setString(1,comboroomnumber.getItemAt(comboroomnumber.getSelectedIndex()));
-            rs=pst.executeQuery();
-            if(rs.next()){
-            txtprice.setText(rs.getString("price"));
+
+            try (PreparedStatement pstRoom = con.prepareStatement("UPDATE room SET status='Booked' WHERE roomnumber=?")) {
+                pstRoom.setObject(1, comboroomnumber.getSelectedItem());
+                pstRoom.executeUpdate();
             }
-            txtname.setText("");
-            txtmob.setText("");
-            txtnat.setText("");
-            txtemail.setText("");
-            txtadhar.setText("");
-            txtaddres.setText("");
-            combogender.setSelectedIndex(0);
-            combobed.setSelectedIndex(0);
-            comboroomtype.setSelectedIndex(0);
-            if(comboroomnumber.getItemCount()==0)
-                txtprice.setText("");
-            }catch(HeadlessException | ClassNotFoundException | SQLException e){
-            }
-        }catch(NumberFormatException e){
-            JOptionPane.showMessageDialog(this,"Either Mobile Number or Adhar Number Not valied");
-                }
-    }
-    
+
+            con.commit();
+            JOptionPane.showMessageDialog(this, "Room Alloted Successfully");
+            clearForm();
+            refreshRoomData();
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Database Error: " + e.getMessage());
+        }
+
     }//GEN-LAST:event_jButton2ActionPerformed
 
     private void comboroomtypeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_comboroomtypeActionPerformed
@@ -517,27 +414,8 @@ if(comboroomnumber.getItemCount()==0)
     }//GEN-LAST:event_jButton2MouseReleased
 
     private void comboroomtypeItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_comboroomtypeItemStateChanged
-        PreparedStatement pst;
-        ResultSet rs;
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            java.sql.Connection con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-            pst=con.prepareStatement("select roomnumber from room where status=? AND roomtype=? AND bed=?");
-            pst.setString(1,"Not Booked");
-            pst.setString(2, comboroomtype.getItemAt(comboroomtype.getSelectedIndex()));
-            pst.setString(3, combobed.getItemAt(combobed.getSelectedIndex()));
-            rs=pst.executeQuery();
-            comboroomnumber.removeAllItems();
-            while(rs.next()){
-                comboroomnumber.addItem(rs.getString("roomnumber"));
-            }
-            pst=con.prepareStatement("select price from room where roomnumber=?");
-            pst.setString(1,comboroomnumber.getItemAt(comboroomnumber.getSelectedIndex()));
-            rs=pst.executeQuery();
-            if(rs.next())
-            txtprice.setText(rs.getString("price"));
-        }catch(ClassNotFoundException | SQLException e){
-        }
+        // Refactoring: use helper to reload room numbers and price
+        refreshRoomData();
         
     }//GEN-LAST:event_comboroomtypeItemStateChanged
 
@@ -549,29 +427,76 @@ if(comboroomnumber.getItemCount()==0)
     }//GEN-LAST:event_comboroomtypeMouseReleased
 
     private void combobedItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_combobedItemStateChanged
-         PreparedStatement pst;
-        ResultSet rs;
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            java.sql.Connection con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-            pst=con.prepareStatement("select roomnumber from room where status=? AND roomtype=? AND bed=?");
-            pst.setString(1,"Not Booked");
-            pst.setString(2, comboroomtype.getItemAt(comboroomtype.getSelectedIndex()));
-            pst.setString(3, combobed.getItemAt(combobed.getSelectedIndex()));
-            rs=pst.executeQuery();
-            comboroomnumber.removeAllItems();
-            while(rs.next()){
-                comboroomnumber.addItem(rs.getString("roomnumber"));
-            }
-            pst=con.prepareStatement("select price from room where roomnumber=?");
-            pst.setString(1,comboroomnumber.getItemAt(comboroomnumber.getSelectedIndex()));
-            rs=pst.executeQuery();
-            if(rs.next())
-            txtprice.setText(rs.getString("price"));
-        }catch(ClassNotFoundException | SQLException e){
-        }
+        // Refactoring: use helper to reload room numbers and price
+        refreshRoomData();
         
     }//GEN-LAST:event_combobedItemStateChanged
+
+    private void setupInitialState() {
+        java.text.SimpleDateFormat dat = new java.text.SimpleDateFormat("yyyy/MM/dd ");
+        txtdate.setText(dat.format(new java.util.Date()));
+        txtname.requestFocus();
+    }
+
+    // Refactoring: Consolidated duplicate JDBC logic into one method
+    private void refreshRoomData() {
+        String type = (String) comboroomtype.getSelectedItem();
+        String bed = (String) combobed.getSelectedItem();
+        comboroomnumber.removeAllItems();
+
+        String query = "select roomnumber from room where status='Not Booked' AND roomtype=? AND bed=?";
+        try (Connection con = ConnectionProvider.getCon();
+             PreparedStatement pst = con.prepareStatement(query)) {
+            pst.setString(1, type);
+            pst.setString(2, bed);
+            ResultSet rs = pst.executeQuery();
+
+            while (rs.next()) {
+                comboroomnumber.addItem(rs.getString("roomnumber"));
+            }
+            updateRoomPrice();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void updateRoomPrice() {
+        String roomNo = (String) comboroomnumber.getSelectedItem();
+        if (roomNo == null) {
+            txtprice.setText("");
+            return;
+        }
+        try (Connection con = ConnectionProvider.getCon();
+             PreparedStatement pst = con.prepareStatement("select price from room where roomnumber=?")) {
+            pst.setString(1, roomNo);
+            ResultSet rs = pst.executeQuery();
+            if (rs.next()) txtprice.setText(rs.getString("price"));
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Refactoring: Extract Method for Validation (Cleaned Long Method)
+    private boolean validateInputs() {
+        if (txtname.getText().isEmpty() || txtmob.getText().isEmpty() || txtadhar.getText().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "All Fields are Required");
+            return false;
+        }
+        if (txtmob.getText().length() != 10 || txtadhar.getText().length() != 12) {
+            JOptionPane.showMessageDialog(this, "Invalid Format: Mobile (10) or Adhar (12) digits required.");
+            return false;
+        }
+        return true;
+    }
+
+    private void clearForm() {
+        txtname.setText("");
+        txtmob.setText("");
+        txtemail.setText("");
+        txtadhar.setText("");
+        txtaddres.setText("");
+        txtnat.setText("");
+    }
 
     private void txtaddresActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtaddresActionPerformed
               // TODO add your handling code here:

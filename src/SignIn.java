@@ -1,13 +1,13 @@
 
+package hotel.management.system;
+
 import java.awt.event.KeyEvent;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
+import project.ConnectionProvider;
 
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
@@ -20,7 +20,7 @@ import javax.swing.JOptionPane;
  */
 public class SignIn extends javax.swing.JFrame {
 
-    int flag=0;
+    private int passwordVisibleFlag = 0;
     /**
      * Creates new form SignIn
      */
@@ -28,6 +28,66 @@ public class SignIn extends javax.swing.JFrame {
         initComponents();
         txtemail.requestFocus();
        }
+
+    // Refactoring: Centralized authentication logic to remove Duplicate Code
+    private void performLogin() {
+        String email = txtemail.getText();
+        String password = new String(txtpassword.getPassword());
+
+        if (isAdmin(email, password)) {
+            navigateToAdmin();
+        } else {
+            authenticateUser(email, password);
+        }
+    }
+
+    private boolean isAdmin(String email, String password) {
+        return "admin".equalsIgnoreCase(email) && "admin".equalsIgnoreCase(password);
+    }
+
+    private void navigateToAdmin() {
+        new Admin().setVisible(true);
+        this.dispose();
+    }
+
+    private void authenticateUser(String email, String password) {
+        String authQuery = "SELECT status FROM signup WHERE email=? AND password=?";
+        
+        try (Connection con = ConnectionProvider.getCon();
+             PreparedStatement pst = con.prepareStatement(authQuery)) {
+            
+            pst.setString(1, email);
+            pst.setString(2, password);
+            ResultSet rs = pst.executeQuery();
+
+            if (rs.next()) {
+                String status = rs.getString("status");
+                if ("approved".equalsIgnoreCase(status)) {
+                    new Home().setVisible(true);
+                    this.dispose();
+                } else {
+                    JOptionPane.showMessageDialog(this, "Wait for Admin Approval", "Pending", JOptionPane.INFORMATION_MESSAGE);
+                }
+            } else {
+                JOptionPane.showMessageDialog(this, "Incorrect Email or Password", "Error", JOptionPane.WARNING_MESSAGE);
+            }
+        } catch (SQLException ex) {
+            JOptionPane.showMessageDialog(this, "Database Error: " + ex.getMessage());
+        }
+    }
+
+    private void togglePasswordVisibility() {
+        // Refactoring: Use relative paths instead of hardcoded absolute paths
+        if (passwordVisibleFlag == 0) {
+            jLabel4.setIcon(new ImageIcon(getClass().getResource("/image/s.png"))); 
+            txtpassword.setEchoChar((char) 0);
+            passwordVisibleFlag = 1;
+        } else {
+            jLabel4.setIcon(new ImageIcon(getClass().getResource("/image/h.png")));
+            txtpassword.setEchoChar('*');
+            passwordVisibleFlag = 0;
+        }
+    }
 
     /**
      * This method is called from within the constructor to initialize the form.
@@ -183,41 +243,7 @@ public class SignIn extends javax.swing.JFrame {
     }//GEN-LAST:event_txtemailActionPerformed
 
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
-        if(txtemail.getText().equalsIgnoreCase("admin")&&txtpassword.getText().equalsIgnoreCase("admin")){
-           new Admin().setVisible(true);
-           dispose();
-        }
-        else{
-        
-        PreparedStatement pst;
-        ResultSet rs;
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            java.sql.Connection con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
-            pst=con.prepareStatement("select * from signup where email=? AND password=?");
-            pst.setString(1,txtemail.getText());
-            pst.setString(2, txtpassword.getText());
-            rs=pst.executeQuery();
-            if(rs.next()){
-                pst=con.prepareStatement("select * from signup where status=? AND email=?");
-                pst.setString(1,"approved");
-                pst.setString(2, txtemail.getText());
-                rs=pst.executeQuery();
-                if(rs.next())
-                    new Home().setVisible(true);
-                else{
-                    JOptionPane.showMessageDialog(this,"Wait for Addmin Approval","Panding",JOptionPane.INFORMATION_MESSAGE);
-                    txtemail.requestFocus();
-                }
-                }
-            else{
-              JOptionPane.showMessageDialog(this,"Incorrect Email ID or Password","Incorrect",JOptionPane.WARNING_MESSAGE);
-            txtemail.requestFocus();
-            }           
-        } catch (ClassNotFoundException | SQLException ex) {
-            Logger.getLogger(SignIn.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        }
+        performLogin();
     }//GEN-LAST:event_jButton1ActionPerformed
 
     private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
@@ -257,7 +283,10 @@ if(evt.getKeyCode()==KeyEvent.VK_ENTER){
         ResultSet rs;
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
-            java.sql.Connection con=DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel","root","Sudhir@123");
+            java.sql.Connection con=DriverManager.getConnection(
+    "jdbc:mysql://localhost:3306/hotel_management?useSSL=false&serverTimezone=UTC",
+    "root",
+    "p@ssw0rd");
             pst=con.prepareStatement("select * from signup where email=? AND password=?");
             pst.setString(1,txtemail.getText());
             pst.setString(2, txtpassword.getText());
@@ -300,19 +329,7 @@ if(evt.getKeyCode()==KeyEvent.VK_ENTER){
     }//GEN-LAST:event_txtpasswordKeyPressed
 
     private void jLabel4MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jLabel4MouseClicked
-
-if(flag==0){
-   jLabel4.setIcon(new ImageIcon("C:\\Users\\Sudhir\\OneDrive\\Pictures\\Documents\\NetBeansProjects\\Hotel Management System\\src\\s.png"));
-   flag=1;
-   txtpassword.setEchoChar((char)0);
-}
-else
-{
-    jLabel4.setIcon(new ImageIcon("C:\\Users\\Sudhir\\OneDrive\\Pictures\\Documents\\NetBeansProjects\\Hotel Management System\\src\\h.png"));
-    flag=0;
-    txtpassword.setEchoChar('*');
-     
-}
+        togglePasswordVisibility();
 
 
 

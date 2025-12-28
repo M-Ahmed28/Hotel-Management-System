@@ -1,17 +1,11 @@
+package hotel.management.system;
 
-import com.mysql.cj.jdbc.result.ResultSetMetaData;
-import java.beans.Statement;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.text.SimpleDateFormat;
+import java.sql.*;
 import java.time.LocalDate;
-import java.time.ZoneId;
-import java.util.Date;
-import java.util.Vector;
+import java.time.temporal.ChronoUnit;
 import javax.swing.JOptionPane;
 import javax.swing.table.DefaultTableModel;
+import project.ConnectionProvider;
 
 /*
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
@@ -22,60 +16,53 @@ import javax.swing.table.DefaultTableModel;
  * @author Sudhir Kushwaha
  */
 public class CustomerCheckOut extends javax.swing.JFrame {
-int days;
-double pri;
+    int days;
+    double pri;
     /**
      * Creates new form CustomerCheckOut
      */
     public CustomerCheckOut() {
         initComponents();
-        SimpleDateFormat date = new SimpleDateFormat("yyyy/MM/dd ");
-        Date d = new Date();
-        txtoutdate.setText(date.format(d));
-
-        s();
+        txtoutdate.setText(LocalDate.now().toString());
+        loadCustomerData(); // Refactoring: Renamed s() to meaningful name
 
     }
-
-    public void s() {
-
-        Statement st = null;
-        PreparedStatement pst = null;
-        ResultSet rs = null;
-        java.sql.Connection con = null;
-        int q, i;
-
+    // Refactoring: Extract Method for Billing Logic to remove Duplicate Code
+    private void calculateBill(String checkInDate, String pricePerDay) {
         try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            con = DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel", "root", "Sudhir@123");
-            pst = con.prepareStatement("Select * from customer where status=?");
-            pst.setString(1, "NULL");
-            rs = pst.executeQuery();
-            ResultSetMetaData stData = (ResultSetMetaData) rs.getMetaData();
-            q = stData.getColumnCount();
-            DefaultTableModel RecordTable = (DefaultTableModel) jTable1.getModel();
-            RecordTable.setRowCount(0);
-            while (rs.next()) {
-                Vector columnData = new Vector();
-                for (i = 1; i <= q; i++) {
-                    columnData.add(rs.getString("name"));
-                    columnData.add(rs.getString("mobile"));
-                    columnData.add(rs.getString("email"));
-                    columnData.add(rs.getString("date"));
-                    columnData.add(rs.getString("nationality"));
-                    columnData.add(rs.getString("gender"));
-                    columnData.add(rs.getString("id"));
-                    columnData.add(rs.getString("address"));
-                    columnData.add(rs.getString("roomnumber"));
-                    columnData.add(rs.getString("bed"));
-                    columnData.add(rs.getString("roomtype"));
-                    columnData.add(rs.getString("price"));
-
-                }
-                RecordTable.addRow(columnData);
-            }
+            LocalDate d1 = LocalDate.parse(checkInDate);
+            LocalDate d2 = LocalDate.now();
+            long daysBetween = ChronoUnit.DAYS.between(d1, d2);
+            
+            if (daysBetween <= 0) daysBetween = 1; // Minimum 1 day charge
+            
+            txtdays.setText(String.valueOf(daysBetween));
+            double price = Double.parseDouble(pricePerDay);
+            txtamount.setText(String.valueOf(daysBetween * price));
         } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Date Calculation Error: " + e.getMessage());
+        }
+    }
 
+    public void loadCustomerData() {
+        DefaultTableModel model = (DefaultTableModel) jTable1.getModel();
+        model.setRowCount(0);
+        String query = "Select * from customer where status='NULL'";
+        
+        try (Connection con = ConnectionProvider.getCon();
+             PreparedStatement pst = con.prepareStatement(query);
+             ResultSet rs = pst.executeQuery()) {
+            
+            while (rs.next()) {
+                model.addRow(new Object[]{
+                    rs.getString("name"), rs.getString("mobile"), rs.getString("email"),
+                    rs.getString("date"), rs.getString("nationality"), rs.getString("gender"),
+                    rs.getString("id"), rs.getString("address"), rs.getString("roomnumber"),
+                    rs.getString("bed"), rs.getString("roomtype"), rs.getString("price")
+                });
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
 
@@ -292,58 +279,34 @@ double pri;
     }//GEN-LAST:event_txtroomnumberActionPerformed
 
     private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
+        // Search customer by room number and populate fields
         txtname.setText("");
         txtemail.setText("");
         txtmobile.setText("");
         txtprice.setText("");
         txtdate.setText("");
-        PreparedStatement pst = null;
-        Statement st = null;
-        ResultSet rs = null;
-        try {
-            Class.forName("com.mysql.cj.jdbc.Driver");
-            java.sql.Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel", "root", "Sudhir@123");
-            pst = con.prepareStatement("select name,mobile,email,date,price from customer where roomnumber=? AND status=?");
+
+        String query = "SELECT name,mobile,email,date,price FROM customer WHERE roomnumber=? AND status='NULL'";
+        try (Connection con = ConnectionProvider.getCon();
+             PreparedStatement pst = con.prepareStatement(query)) {
             pst.setString(1, txtroomnumber.getText().trim());
-            pst.setString(2, "NULL");
-            rs = pst.executeQuery();
-            if (rs.next()) {
-                txtname.setText(rs.getString("name"));
-                txtemail.setText(rs.getString("email"));
-                txtmobile.setText(rs.getString("mobile"));
-                txtdate.setText(rs.getString("date"));
-                txtprice.setText(rs.getString("price"));
+            try (ResultSet rs = pst.executeQuery()) {
+                if (rs.next()) {
+                    txtname.setText(rs.getString("name"));
+                    txtemail.setText(rs.getString("email"));
+                    txtmobile.setText(rs.getString("mobile"));
+                    txtdate.setText(rs.getString("date"));
+                    txtprice.setText(rs.getString("price"));
+                    // Calculate billing
+                    calculateBill(rs.getString("date"), rs.getString("price"));
+                } else {
+                    JOptionPane.showMessageDialog(this, "Record Not Found.");
+                }
             }
-            
-            ZoneId z=ZoneId.of("Asia/Colombo");
-            LocalDate todays=LocalDate.now(z);
-            String s1=todays.toString();
-            SimpleDateFormat sim=new SimpleDateFormat("yyyy-MM-dd");
-            String f1=rs.getString("date");
-            String f2=s1;
-            try{
-                Date d1=sim.parse(f1);
-                Date d2=sim.parse(f2);
-                long diff=d2.getTime()-d1.getTime();
-                int days=(int)(diff/(1000*24*60*60));
-                if(days==0)
-                    txtamount.setText("1");
-                else
-                    txtdays.setText(String.valueOf(days));
-                double p=Double.parseDouble(rs.getString("price"));
-                double pri=days*p;
-                if(days==0)
-                    txtamount.setText(String.valueOf(p));
-                else
-                    txtamount.setText(String.valueOf(pri));
-            }catch(Exception e){
-            }  
-        } catch (ClassNotFoundException | SQLException ex) {
-           txtdays.setText("");
+        } catch (SQLException e) {
+            txtdays.setText("");
             txtamount.setText("");
-             JOptionPane.showMessageDialog(this,"Record Not Found.");
-            
-            //Logger.getLogger(CustomerCheckOut.class.getName()).log(Level.SEVERE, null, ex);
+            JOptionPane.showMessageDialog(this, "Record Not Found.");
         }
 
     }//GEN-LAST:event_jButton2ActionPerformed
@@ -373,79 +336,61 @@ double pri;
         txtdate.setText(RecordTable.getValueAt(SelectedRows, 3).toString());
         txtroomnumber.setText(RecordTable.getValueAt(SelectedRows, 8).toString());
         txtprice.setText(RecordTable.getValueAt(SelectedRows, 11).toString());
-        
-        
-            ZoneId z=ZoneId.of("Asia/Colombo");
-            LocalDate todays=LocalDate.now(z);
-            String s1=todays.toString();
-            SimpleDateFormat sim=new SimpleDateFormat("yyyy-MM-dd");
-            String f1=RecordTable.getValueAt(SelectedRows, 3).toString();
-            String f2=s1;
-            try{
-                Date d1=sim.parse(f1);
-                Date d2=sim.parse(f2);
-                long diff=d2.getTime()-d1.getTime();
-                 days=(int)(diff/(1000*24*60*60));
-                if(days==0)
-                    txtdays.setText("1");
-                else
-                    txtdays.setText(String.valueOf(days));
-                double p=Double.parseDouble(RecordTable.getValueAt(SelectedRows,11).toString());
-                 pri=days*p;
-                if(days==0)
-                    txtamount.setText(String.valueOf(p));
-                else
-                    txtamount.setText(String.valueOf(pri));
-            }catch(Exception e){
-            }
+
+        // Use centralized billing calculation
+        calculateBill(RecordTable.getValueAt(SelectedRows, 3).toString(), RecordTable.getValueAt(SelectedRows, 11).toString());
         
         
     }//GEN-LAST:event_jTable1MouseClicked
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
-        if (txtname.getText().equals("")) {
-            JOptionPane.showMessageDialog(this, "Please Enter Room Number And Search it,Then Check Out Customer");
-        } else {
-            try {
-                PreparedStatement pst = null;
-                Class.forName("com.mysql.cj.jdbc.Driver");
-                java.sql.Connection con = DriverManager.getConnection("jdbc:mysql://localhost:3306/hotel", "root", "Sudhir@123");
-                pst = con.prepareStatement("update customer set status=? where roomnumber=?");
-                pst.setString(1, "check out");
-                pst.setString(2, txtroomnumber.getText());
-                pst.executeUpdate();
-                pst = con.prepareStatement("update customer set amount=?,outdate=?,days=? where roomnumber=? AND date=?");
+        if (txtname.getText().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please search for a customer first.");
+            return;
+        }
+
+        try (Connection con = ConnectionProvider.getCon()) {
+            con.setAutoCommit(false); // Refactoring: Added transaction safety
+
+            // Update Customer Status and Billing details
+            String updateCust = "UPDATE customer SET status='check out', amount=?, outdate=?, days=? WHERE roomnumber=? AND date=?";
+            try (PreparedStatement pst = con.prepareStatement(updateCust)) {
                 pst.setString(1, txtamount.getText());
                 pst.setString(2, txtoutdate.getText());
                 pst.setString(3, txtdays.getText());
                 pst.setString(4, txtroomnumber.getText());
                 pst.setString(5, txtdate.getText());
                 pst.executeUpdate();
-                pst = con.prepareStatement("update room set status=? where roomnumber=?");
-                pst.setString(1, "Not Booked");
-                pst.setString(2, txtroomnumber.getText());
-                pst.executeUpdate();
-                //JOptionPane.showMessageDialog(this,"Check Out Successfully\n Goto to Cutomer Bill Details menu and Print Bill");
-                int yes=JOptionPane.showConfirmDialog(this,"Check out Successfully.\nDo you want to see & print bill?","Check outed",JOptionPane.YES_NO_OPTION);
-                if(JOptionPane.YES_OPTION==yes)
-                    new CustomerDetailsBill().setVisible(true);
-                else{
-                s();
-                txtname.setText("");
-                txtemail.setText("");
-                txtmobile.setText("");
-                txtdate.setText("");
-                txtprice.setText("");
-                txtdays.setText("");
-                txtamount.setText("");
-                txtroomnumber.setText("");
-                        }
-            } catch (ClassNotFoundException | SQLException e) {
             }
 
+            // Update Room Availability
+            try (PreparedStatement pstRoom = con.prepareStatement("UPDATE room SET status='Not Booked' WHERE roomnumber=?")) {
+                pstRoom.setString(1, txtroomnumber.getText());
+                pstRoom.executeUpdate();
+            }
+
+            con.commit();
+            handlePostCheckOut();
+        } catch (SQLException e) {
+            JOptionPane.showMessageDialog(this, "Check-out failed: " + e.getMessage());
         }
 
     }//GEN-LAST:event_jButton3ActionPerformed
+
+    private void handlePostCheckOut() {
+        int yes = JOptionPane.showConfirmDialog(this, "Check out Successful. Print Bill?", "Success", JOptionPane.YES_NO_OPTION);
+        if (yes == JOptionPane.YES_OPTION) {
+            new CustomerDetailsBill().setVisible(true);
+        }
+        clearFields();
+        loadCustomerData();
+    }
+
+    private void clearFields() {
+        txtname.setText(""); txtemail.setText(""); txtmobile.setText("");
+        txtdate.setText(""); txtprice.setText(""); txtdays.setText("");
+        txtamount.setText(""); txtroomnumber.setText("");
+    }
 
     /**
      * @param args the command line arguments
